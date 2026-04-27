@@ -8,17 +8,17 @@ local Settings = {
     FPV = {
         Enabled = true,
         Color = Color3.fromRGB(255, 0, 0), -- Red
-        Names = {"FPV", "Drone", "Quadcopter"}
+        Names = {"FPV", "Drone", "Quadcopter", "Bober", "Бобер", "Expert"}
     },
     Shahed = {
         Enabled = true,
         Color = Color3.fromRGB(255, 165, 0), -- Orange
-        Names = {"Shahed", "Geran", "Kamikaze"}
+        Names = {"Shahed", "Geran", "Kamikaze", "Герань"}
     },
     Missile = {
         Enabled = true,
         Color = Color3.fromRGB(255, 255, 0), -- Yellow
-        Names = {"Missile", "Rocket", "Projectile"}
+        Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic"}
     },
     Visuals = {
         FillOpacity = 0.5,
@@ -140,7 +140,7 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Size = UDim2.new(0, 250, 0, 320)
 MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
@@ -255,6 +255,33 @@ CloseCorner.Parent = CloseBtn
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
+end)
+
+local DebugBtn = Instance.new("TextButton")
+DebugBtn.Size = UDim2.new(0.9, 0, 0, 30)
+DebugBtn.Position = UDim2.new(0.05, 0, 0, 275)
+DebugBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+DebugBtn.Text = "Print Names to Console (F9)"
+DebugBtn.TextColor3 = Color3.new(1, 1, 1)
+DebugBtn.Font = Enum.Font.Gotham
+DebugBtn.TextSize = 12
+DebugBtn.Parent = MainFrame
+
+local DebugCorner = Instance.new("UICorner")
+DebugCorner.CornerRadius = UDim.new(0, 6)
+DebugCorner.Parent = DebugBtn
+
+DebugBtn.MouseButton1Click:Connect(function()
+    print("--- DronePoint Object Dump ---")
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") or v:IsA("BasePart") then
+            if #v:GetChildren() > 5 then -- Only models with some complexity
+                print("Found Object: " .. v.Name .. " | Parent: " .. tostring(v.Parent))
+            end
+        end
+    end
+    print("--- End of Dump ---")
+    warn("Check console (F9) for names!")
 end)
 
 -- Initial scan

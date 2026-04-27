@@ -1,5 +1,5 @@
 local ESP = {}
-local Settings = nil -- Will be injected
+local Settings = nil
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -12,22 +12,67 @@ ScreenGui.Name = "DronePointESP_Container"
 ScreenGui.IgnoreGuiInset = true
 
 local ActiveESP = {}
+local MAX_DISTANCE = 2000 -- Don't process far objects
 
 function ESP.Init(settingsRef, guiParent)
     Settings = settingsRef
     ScreenGui.Parent = guiParent
     
     RunService.RenderStepped:Connect(function()
+        local camPos = Camera.CFrame.Position
+        local universalEnabled = Settings.Universal.Enabled
+        
         for id, data in pairs(ActiveESP) do
-            if not data.Object or not data.Object.Parent then
+            local obj = data.Object
+            if not obj or not obj.Parent then
                 if data.Box then data.Box:Destroy() end
                 ActiveESP[id] = nil
                 continue
             end
             
-            local isEnabled = (data.Config.Enabled or Settings.Universal.Enabled)
-            if isEnabled and Settings.Visuals.Style == "Box" then
-                local cf, size = data.Object:GetBoundingBox()
+            local config = data.Config
+            local isEnabled = (config.Enabled or universalEnabled)
+            
+            -- Immediate skip if disabled
+            if not isEnabled then
+                if data.Box then data.Box.Visible = false end
+                if data.Label then data.Label.Enabled = false end
+                if data.Highlight then data.Highlight.Enabled = false end
+                continue
+            end
+
+            -- Distance Check
+            local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+            if not root then continue end
+            
+            local dist = (root.Position - camPos).Magnitude
+            if dist > MAX_DISTANCE then
+                if data.Box then data.Box.Visible = false end
+                if data.Label then data.Label.Enabled = false end
+                if data.Highlight then data.Highlight.Enabled = false end
+                continue
+            end
+
+            -- Update Visuals
+            local style = Settings.Visuals.Style
+            
+            -- Highlight Logic
+            if style == "Highlight" then
+                if not data.Highlight then
+                    data.Highlight = Instance.new("Highlight")
+                    data.Highlight.Adornee = obj
+                    data.Highlight.Parent = obj
+                end
+                data.Highlight.Enabled = true
+                data.Highlight.FillColor = universalEnabled and Settings.Universal.Color or config.Color
+                if data.Box then data.Box.Visible = false end
+            elseif data.Highlight then
+                data.Highlight.Enabled = false
+            end
+            
+            -- 2D Box Logic (Expensive math only if needed)
+            if style == "Box" then
+                local cf, size = obj:GetBoundingBox()
                 local screenPos, onScreen = Camera:WorldToViewportPoint(cf.Position)
                 
                 if onScreen then
@@ -39,14 +84,19 @@ function ESP.Init(settingsRef, guiParent)
                     data.Box.Visible = true
                     data.Box.Position = UDim2.new(0, screenPos.X - width/2, 0, screenPos.Y - height/2)
                     data.Box.Size = UDim2.new(0, width, 0, height)
+                    data.Box.UIStroke.Color = universalEnabled and Settings.Universal.Color or config.Color
                 else
                     data.Box.Visible = false
                 end
-            else
-                if data.Box then data.Box.Visible = false end
+            elseif data.Box then
+                data.Box.Visible = false
             end
-            if data.Label then data.Label.Enabled = isEnabled end
-            if data.Highlight then data.Highlight.Enabled = (isEnabled and Settings.Visuals.Style == "Highlight") end
+            
+            -- Label Logic
+            if data.Label then
+                data.Label.Enabled = true
+                data.Label.TextLabel.TextColor3 = universalEnabled and Settings.Universal.Color or config.Color
+            end
         end
     end)
 end
@@ -65,35 +115,6 @@ function ESP.Apply(object, config, displayName)
         outline.Parent = box
         box.Parent = ScreenGui
         
-        ActiveESP[id] = {
-            Object = object,
-            Config = config,
-            Name = displayName or object.Name,
-            Highlight = nil,
-            Box = box,
-            Label = nil
-        }
-    end
-    
-    local data = ActiveESP[id]
-    local isEnabled = (config.Enabled or Settings.Universal.Enabled)
-    
-    if Settings.Visuals.Style == "Highlight" and isEnabled then
-        if not data.Highlight then
-            data.Highlight = Instance.new("Highlight")
-            data.Highlight.Name = "ESPHighlight"
-            data.Highlight.Adornee = object
-            data.Highlight.Parent = object
-        end
-        data.Highlight.Enabled = true
-        data.Highlight.FillColor = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
-    elseif data.Highlight then
-        data.Highlight.Enabled = false
-    end
-    
-    data.Box.UIStroke.Color = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
-    
-    if not data.Label then
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "ESPLabel"
         billboard.Size = UDim2.new(0, 150, 0, 50)
@@ -103,16 +124,22 @@ function ESP.Apply(object, config, displayName)
         text.Parent = billboard
         text.BackgroundTransparency = 1
         text.Size = UDim2.new(1, 0, 1, 0)
-        text.Text = data.Name
         text.Font = Enum.Font.GothamBold
         text.TextSize = 14
         text.TextStrokeTransparency = 0.5
         text.TextStrokeColor3 = Color3.new(0, 0, 0)
         billboard.Parent = object
-        data.Label = billboard
+        
+        ActiveESP[id] = {
+            Object = object,
+            Config = config,
+            Name = displayName or object.Name,
+            Highlight = nil,
+            Box = box,
+            Label = billboard
+        }
+        billboard.TextLabel.Text = ActiveESP[id].Name
     end
-    data.Label.Enabled = isEnabled
-    data.Label.TextLabel.TextColor3 = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
 end
 
 function ESP.Check(object)

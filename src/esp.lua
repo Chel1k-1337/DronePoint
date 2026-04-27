@@ -12,14 +12,12 @@ ScreenGui.Name = "DronePointESP_Container"
 ScreenGui.IgnoreGuiInset = true
 
 local ActiveESP = {}
-local MAX_DISTANCE = 2000 -- Don't process far objects
 
 function ESP.Init(settingsRef, guiParent)
     Settings = settingsRef
     ScreenGui.Parent = guiParent
     
     RunService.RenderStepped:Connect(function()
-        local camPos = Camera.CFrame.Position
         local universalEnabled = Settings.Universal.Enabled
         
         for id, data in pairs(ActiveESP) do
@@ -35,18 +33,6 @@ function ESP.Init(settingsRef, guiParent)
             
             -- Immediate skip if disabled
             if not isEnabled then
-                if data.Box then data.Box.Visible = false end
-                if data.Label then data.Label.Enabled = false end
-                if data.Highlight then data.Highlight.Enabled = false end
-                continue
-            end
-
-            -- Distance Check
-            local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
-            if not root then continue end
-            
-            local dist = (root.Position - camPos).Magnitude
-            if dist > MAX_DISTANCE then
                 if data.Box then data.Box.Visible = false end
                 if data.Label then data.Label.Enabled = false end
                 if data.Highlight then data.Highlight.Enabled = false end
@@ -70,7 +56,7 @@ function ESP.Init(settingsRef, guiParent)
                 data.Highlight.Enabled = false
             end
             
-            -- 2D Box Logic (Expensive math only if needed)
+            -- 2D Box Logic
             if style == "Box" then
                 local cf, size = obj:GetBoundingBox()
                 local screenPos, onScreen = Camera:WorldToViewportPoint(cf.Position)
@@ -144,11 +130,13 @@ end
 
 function ESP.Check(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
+    
     local player = Players:GetPlayerFromCharacter(object)
     if player then
         if player ~= LocalPlayer then ESP.Apply(object, Settings.Players, player.Name) end
         return
     end
+    
     local target = object
     if object:IsA("BasePart") and object.Parent and object.Parent:IsA("Model") and object.Parent ~= Workspace then target = object.Parent end
     if ActiveESP[target:GetDebugId()] then return end

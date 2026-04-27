@@ -5,9 +5,9 @@
 ]]
 
 local Settings = {
-    FPV = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"FPV", "Drone", "Quadcopter", "Bober", "Бобер", "Expert", "bbrn", "Ognik"} },
+    FPV = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"FPV", "Drone", "Quadcopter", "Bober", "Бобер", "Expert", "bbrn", "Ognik", "Lancet"} },
     Shahed = { Enabled = true, Color = Color3.fromRGB(255, 165, 0), Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера", "GrbrBl", "dronenight", "droneday", "Jet", "238"} },
-    Missile = { Enabled = true, Color = Color3.fromRGB(255, 255, 0), Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic"} },
+    Missile = { Enabled = true, Color = Color3.fromRGB(255, 255, 0), Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic", "H"} },
     Givers = { Enabled = true, Color = Color3.fromRGB(0, 255, 255), Names = {"Giver", "Stand", "Table", "Стол", "Выдача"} },
     Universal = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
     Visuals = { FillOpacity = 0.5, OutlineOpacity = 0, Enabled = true }
@@ -84,7 +84,15 @@ local function CheckObject(object)
     local name = target.Name:lower()
     local partName = object.Name:lower()
     
-    local NameMap = { ["bbrn"] = "Bober", ["grbrbl"] = "Gerbera", ["dronenight"] = "Shahed 136", ["droneday"] = "Shahed 136", ["ognik"] = "Ognik" }
+    local NameMap = { 
+        ["bbrn"] = "Bober", 
+        ["grbrbl"] = "Gerbera", 
+        ["dronenight"] = "Shahed 136", 
+        ["droneday"] = "Shahed 136", 
+        ["ognik"] = "Ognik",
+        ["h"] = "Missile (H)",
+        ["lancet"] = "Lancet"
+    }
     local displayName = NameMap[name] or target.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
     
     for _, n in ipairs(Settings.Givers.Names) do

@@ -1,7 +1,7 @@
 --[[
-    DronePoint ESP Script with Individual Toggles
+    DronePoint ESP Script with Styles and Player ESP
     Author: Antigravity AI
-    Version: 1.3
+    Version: 1.4
 ]]
 
 local Settings = {
@@ -10,15 +10,20 @@ local Settings = {
         Bober = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"Bober", "Бобер", "bbrn"} },
         Shahed136 = { Enabled = true, Color = Color3.fromRGB(255, 165, 0), Names = {"Shahed", "Geran", "Kamikaze", "Герань", "dronenight", "droneday"} },
         Gerbera = { Enabled = true, Color = Color3.fromRGB(255, 165, 0), Names = {"Gerbera", "Гербера", "GrbrBl"} },
-        Lancet = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"Lancet"} },
-        Ognik = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"Ognik", "ognik"} }
+        Lancet = { Enabled = true, Color = Color3.fromRGB(255, 0, 0), Names = {"Lancet"} }
     },
     Rockets = {
         Missile = { Enabled = true, Color = Color3.fromRGB(255, 255, 0), Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic", "H"} }
     },
+    Players = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
     Givers = { Enabled = true, Color = Color3.fromRGB(0, 255, 255), Names = {"Giver", "Stand", "Table", "Стол", "Выдача"} },
     Universal = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
-    Visuals = { FillOpacity = 0.5, OutlineOpacity = 0, Enabled = true }
+    Visuals = {
+        Style = "Highlight", -- "Highlight" or "Box"
+        FillOpacity = 0.5,
+        OutlineOpacity = 0,
+        Enabled = true
+    }
 }
 
 local RunService = game:GetService("RunService")
@@ -31,156 +36,124 @@ local LocalPlayer = Players.LocalPlayer
 
 -- ESP Logic
 local function ApplyESP(object, config, displayName)
-    if not config.Enabled and not Settings.Universal.Enabled then return end
+    local isEnabled = (config.Enabled or Settings.Universal.Enabled)
     
+    -- Highlight Style
     local highlight = object:FindFirstChild("ESPHighlight")
-    if not highlight then
-        highlight = Instance.new("Highlight")
-        highlight.Name = "ESPHighlight"
-        highlight.FillColor = config.Color
-        highlight.OutlineColor = Color3.new(1, 1, 1)
+    if Settings.Visuals.Style == "Highlight" then
+        if not highlight then
+            highlight = Instance.new("Highlight")
+            highlight.Name = "ESPHighlight"
+            highlight.Adornee = object
+            highlight.Parent = object
+        end
+        highlight.Enabled = isEnabled
+        highlight.FillColor = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
         highlight.FillTransparency = Settings.Visuals.FillOpacity
         highlight.OutlineTransparency = Settings.Visuals.OutlineOpacity
-        highlight.Adornee = object
-        highlight.Parent = object
-        
-        local billboard = Instance.new("BillboardGui")
+    elseif highlight then
+        highlight.Enabled = false
+    end
+    
+    -- Box Style
+    local box = object:FindFirstChild("ESPBox")
+    if Settings.Visuals.Style == "Box" then
+        if not box then
+            box = Instance.new("SelectionBox")
+            box.Name = "ESPBox"
+            box.Adornee = object
+            box.LineThickness = 0.05
+            box.Parent = object
+        end
+        box.Visible = isEnabled
+        box.Color3 = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
+    elseif box then
+        box.Visible = false
+    end
+    
+    -- Label
+    local billboard = object:FindFirstChild("ESPLabel")
+    if not billboard then
+        billboard = Instance.new("BillboardGui")
         billboard.Name = "ESPLabel"
         billboard.Size = UDim2.new(0, 150, 0, 50)
         billboard.AlwaysOnTop = true
         billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-        
         local text = Instance.new("TextLabel")
         text.Parent = billboard
         text.BackgroundTransparency = 1
         text.Size = UDim2.new(1, 0, 1, 0)
         text.Text = displayName or object.Name
-        text.TextColor3 = config.Color
-        text.TextStrokeTransparency = 0.5
-        text.TextStrokeColor3 = Color3.new(0, 0, 0)
         text.Font = Enum.Font.GothamBold
         text.TextSize = 16
-        
+        text.TextStrokeTransparency = 0.5
+        text.TextStrokeColor3 = Color3.new(0, 0, 0)
         billboard.Parent = object
-    else
-        highlight.Enabled = config.Enabled or Settings.Universal.Enabled
-        highlight.FillColor = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
-        local label = object:FindFirstChild("ESPLabel")
-        if label then 
-            label.Enabled = highlight.Enabled 
-            local txt = label:FindFirstChildOfClass("TextLabel")
-            if txt then txt.TextColor3 = highlight.FillColor end
-        end
     end
+    billboard.Enabled = isEnabled
+    local txt = billboard:FindFirstChildOfClass("TextLabel")
+    if txt then txt.TextColor3 = (Settings.Universal.Enabled and Settings.Universal.Color or config.Color) end
 end
 
 local function CheckObject(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
     
+    -- Player Check
+    if Players:GetPlayerFromCharacter(object) then
+        if object ~= LocalPlayer.Character then
+            ApplyESP(object, Settings.Players, object.Name)
+        end
+        return
+    end
+
     local target = object
     if object:IsA("BasePart") and object.Parent and object.Parent:IsA("Model") and object.Parent ~= Workspace then
         target = object.Parent
     end
 
-    if target:FindFirstChild("ESPHighlight") then return end
+    if target:FindFirstChild("ESPLabel") then return end
     local p = target.Parent
     while p and p ~= Workspace do
-        if p:FindFirstChild("ESPHighlight") then return end
+        if p:FindFirstChild("ESPLabel") then return end
         p = p.Parent
     end
 
     local name = target.Name:lower()
     local partName = object.Name:lower()
-    
     local NameMap = { ["bbrn"] = "Bober", ["grbrbl"] = "Gerbera", ["dronenight"] = "Shahed 136", ["droneday"] = "Shahed 136", ["ognik"] = "Ognik", ["h"] = "Missile (H)", ["lancet"] = "Lancet" }
     local displayName = NameMap[name] or target.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
     
-    -- Check Givers
     for _, n in ipairs(Settings.Givers.Names) do
-        if name:find(n:lower()) or partName:find(n:lower()) then
-            ApplyESP(target, Settings.Givers, displayName)
-            return
-        end
+        if name:find(n:lower()) or partName:find(n:lower()) then ApplyESP(target, Settings.Givers, displayName) return end
     end
-    
-    -- Check Individual Drones
-    for droneType, config in pairs(Settings.Drones) do
+    for _, config in pairs(Settings.Drones) do
         for _, n in ipairs(config.Names) do
-            if name:find(n:lower()) or partName:find(n:lower()) then
-                ApplyESP(target, config, displayName)
-                return
-            end
+            if name:find(n:lower()) or partName:find(n:lower()) then ApplyESP(target, config, displayName) return end
         end
     end
-    
-    -- Check Rockets
     for _, n in ipairs(Settings.Rockets.Missile.Names) do
-        if name:find(n:lower()) or partName:find(n:lower()) then
-            ApplyESP(target, Settings.Rockets.Missile, displayName)
-            return
-        end
+        if name:find(n:lower()) or partName:find(n:lower()) then ApplyESP(target, Settings.Rockets.Missile, displayName) return end
     end
-    
-    -- Universal check (Fuselage/MainPart/Wing)
     if target:FindFirstChild("Fuselage") or target:FindFirstChild("MainPart") or partName:find("wing") or partName:find("fuselage") then
         ApplyESP(target, Settings.Drones.FPV, displayName)
         return
     end
-
-    if Settings.Universal.Enabled then
-        ApplyESP(target, Settings.Universal, displayName)
-    end
+    if Settings.Universal.Enabled then ApplyESP(target, Settings.Universal, displayName) end
 end
 
 local function RefreshESP()
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        local highlight = obj:FindFirstChild("ESPHighlight")
-        if highlight then
-            if Settings.Universal.Enabled then
-                highlight.Enabled = true
-                highlight.FillColor = Settings.Universal.Color
+        local label = obj:FindFirstChild("ESPLabel")
+        if label then
+            local name = obj.Name:lower()
+            local config = nil
+            if Players:GetPlayerFromCharacter(obj) then config = Settings.Players
+            elseif name:find("giver") or name:find("stand") then config = Settings.Givers
             else
-                local name = obj.Name:lower()
-                local found = false
-                
-                -- Check Givers
-                for _, n in ipairs(Settings.Givers.Names) do
-                    if name:find(n:lower()) then
-                        highlight.Enabled = Settings.Givers.Enabled
-                        highlight.FillColor = Settings.Givers.Color
-                        found = true break
-                    end
-                end
-                
-                -- Check Drones
-                if not found then
-                    for droneType, config in pairs(Settings.Drones) do
-                        for _, n in ipairs(config.Names) do
-                            if name:find(n:lower()) then
-                                highlight.Enabled = config.Enabled
-                                highlight.FillColor = config.Color
-                                found = true break
-                            end
-                        end
-                        if found then break end
-                    end
-                end
-                
-                -- Check Rockets
-                if not found then
-                    for _, n in ipairs(Settings.Rockets.Missile.Names) do
-                        if name:find(n:lower()) then
-                            highlight.Enabled = Settings.Rockets.Missile.Enabled
-                            highlight.FillColor = Settings.Rockets.Missile.Color
-                            found = true break
-                        end
-                    end
-                end
-                
-                if not found then highlight.Enabled = false end
+                for _, d in pairs(Settings.Drones) do for _, n in ipairs(d.Names) do if name:find(n:lower()) then config = d break end end if config then break end end
+                if not config then for _, n in ipairs(Settings.Rockets.Missile.Names) do if name:find(n:lower()) then config = Settings.Rockets.Missile break end end end
             end
-            local label = obj:FindFirstChild("ESPLabel")
-            if label then label.Enabled = highlight.Enabled local txt = label:FindFirstChildOfClass("TextLabel") if txt then txt.TextColor3 = highlight.FillColor end end
+            if config then ApplyESP(obj, config, label.TextLabel.Text) end
         else
             CheckObject(obj)
         end
@@ -195,18 +168,14 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 300, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 300, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
 local Title = Instance.new("TextLabel")
-Title.Name = "Title"
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 Title.Text = "DronePoint Ultimate"
@@ -217,134 +186,138 @@ Title.Parent = MainFrame
 Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
 
 local TabBar = Instance.new("Frame")
-TabBar.Name = "TabBar"
 TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
 TabBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-TabBar.BorderSizePixel = 0
 TabBar.Parent = MainFrame
 
-local function CreateTab(name, xPos, width)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(width, 0, 1, 0)
-    btn.Position = UDim2.new(xPos, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    btn.BorderSizePixel = 0
-    btn.Text = name
-    btn.TextColor3 = Color3.new(0.7, 0.7, 0.7)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 13
-    btn.Parent = TabBar
-    return btn
+local function CreateTab(name, x, w)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(w, 0, 1, 0)
+    b.Position = UDim2.new(x, 0, 0, 0)
+    b.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    b.Text = name
+    b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 12
+    b.Parent = TabBar
+    return b
 end
 
-local DronesTab = CreateTab("Drones", 0, 0.33)
-local RocketsTab = CreateTab("Rockets", 0.33, 0.33)
-local DebugTab = CreateTab("Debug", 0.66, 0.34)
+local Tabs = {
+    Drones = CreateTab("Drones", 0, 0.25),
+    Rockets = CreateTab("Rockets", 0.25, 0.25),
+    Settings = CreateTab("Settings", 0.5, 0.25),
+    Debug = CreateTab("Debug", 0.75, 0.25)
+}
 
-local DronesContent = Instance.new("ScrollingFrame")
-DronesContent.Name = "DronesContent"
-DronesContent.Size = UDim2.new(1, 0, 1, -115)
-DronesContent.Position = UDim2.new(0, 0, 0, 75)
-DronesContent.BackgroundTransparency = 1
-DronesContent.ScrollBarThickness = 4
-DronesContent.CanvasSize = UDim2.new(0, 0, 1.5, 0)
-DronesContent.Parent = MainFrame
-
-local RocketsContent = DronesContent:Clone()
-RocketsContent.Name = "RocketsContent"
-RocketsContent.Visible = false
-RocketsContent.Parent = MainFrame
-
-local DebugContent = DronesContent:Clone()
-DebugContent.Name = "DebugContent"
-DebugContent.Visible = false
-DebugContent.Parent = MainFrame
-
-local function SwitchTab(tabName)
-    DronesContent.Visible = (tabName == "Drones")
-    RocketsContent.Visible = (tabName == "Rockets")
-    DebugContent.Visible = (tabName == "Debug")
-    DronesTab.TextColor3 = (tabName == "Drones" and Color3.new(1,1,1) or Color3.new(0.7,0.7,0.7))
-    RocketsTab.TextColor3 = (tabName == "Rockets" and Color3.new(1,1,1) or Color3.new(0.7,0.7,0.7))
-    DebugTab.TextColor3 = (tabName == "Debug" and Color3.new(1,1,1) or Color3.new(0.7,0.7,0.7))
+local function CreateContent()
+    local c = Instance.new("ScrollingFrame")
+    c.Size = UDim2.new(1, 0, 1, -115)
+    c.Position = UDim2.new(0, 0, 0, 75)
+    c.BackgroundTransparency = 1
+    c.ScrollBarThickness = 4
+    c.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+    c.Visible = false
+    c.Parent = MainFrame
+    return c
 end
 
-DronesTab.MouseButton1Click:Connect(function() SwitchTab("Drones") end)
-RocketsTab.MouseButton1Click:Connect(function() SwitchTab("Rockets") end)
-DebugTab.MouseButton1Click:Connect(function() SwitchTab("Debug") end)
-SwitchTab("Drones")
+local Contents = { Drones = CreateContent(), Rockets = CreateContent(), Settings = CreateContent(), Debug = CreateContent() }
 
-local function CreateToggle(name, yPos, parent, callback, default)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0.9, 0, 0, 35)
-    frame.Position = UDim2.new(0.05, 0, 0, yPos)
-    frame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    frame.BorderSizePixel = 0
-    frame.Parent = parent
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.7, 0, 1, 0)
-    lbl.Position = UDim2.new(0.05, 0, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = name
-    lbl.TextColor3 = Color3.new(1, 1, 1)
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 36, 0, 18)
-    btn.Position = UDim2.new(0.95, -36, 0.5, -9)
-    btn.BackgroundColor3 = default and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 0)
-    btn.Text = ""
-    btn.Parent = frame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-    local active = default
-    btn.MouseButton1Click:Connect(function() active = not active btn.BackgroundColor3 = active and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 0) callback(active) end)
+local function Switch(n)
+    for k, v in pairs(Contents) do v.Visible = (k == n) end
+    for k, v in pairs(Tabs) do v.TextColor3 = (k == n and Color3.new(1,1,1) or Color3.new(0.7,0.7,0.7)) end
 end
 
--- Populate Tabs
-CreateToggle("FPV Drone", 10, DronesContent, function(v) Settings.Drones.FPV.Enabled = v RefreshESP() end, Settings.Drones.FPV.Enabled)
-CreateToggle("Bober", 50, DronesContent, function(v) Settings.Drones.Bober.Enabled = v RefreshESP() end, Settings.Drones.Bober.Enabled)
-CreateToggle("Shahed 136", 90, DronesContent, function(v) Settings.Drones.Shahed136.Enabled = v RefreshESP() end, Settings.Drones.Shahed136.Enabled)
-CreateToggle("Gerbera", 130, DronesContent, function(v) Settings.Drones.Gerbera.Enabled = v RefreshESP() end, Settings.Drones.Gerbera.Enabled)
-CreateToggle("Lancet", 170, DronesContent, function(v) Settings.Drones.Lancet.Enabled = v RefreshESP() end, Settings.Drones.Lancet.Enabled)
-CreateToggle("Ognik", 210, DronesContent, function(v) Settings.Drones.Ognik.Enabled = v RefreshESP() end, Settings.Drones.Ognik.Enabled)
+for k, v in pairs(Tabs) do v.MouseButton1Click:Connect(function() Switch(k) end) end
+Switch("Drones")
 
-CreateToggle("All Missiles", 10, RocketsContent, function(v) Settings.Rockets.Missile.Enabled = v RefreshESP() end, Settings.Rockets.Missile.Enabled)
+local function CreateToggle(n, y, p, c, d)
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(0.9, 0, 0, 35)
+    f.Position = UDim2.new(0.05, 0, 0, y)
+    f.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    f.Parent = p
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(0.7, 0, 1, 0)
+    l.Position = UDim2.new(0.05, 0, 0, 0)
+    l.BackgroundTransparency = 1
+    l.Text = n
+    l.TextColor3 = Color3.new(1, 1, 1)
+    l.Font = Enum.Font.Gotham
+    l.TextSize = 13
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = f
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, 36, 0, 18)
+    b.Position = UDim2.new(0.95, -36, 0.5, -9)
+    b.BackgroundColor3 = d and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 0)
+    b.Text = ""
+    b.Parent = f
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+    local a = d
+    b.MouseButton1Click:Connect(function() a = not a b.BackgroundColor3 = a and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 0) c(a) end)
+end
 
-CreateToggle("Givers ESP", 10, DebugContent, function(v) Settings.Givers.Enabled = v RefreshESP() end, Settings.Givers.Enabled)
-CreateToggle("Universal ESP", 50, DebugContent, function(v) Settings.Universal.Enabled = v RefreshESP() end, Settings.Universal.Enabled)
+-- Drones
+CreateToggle("FPV Drone", 10, Contents.Drones, function(v) Settings.Drones.FPV.Enabled = v RefreshESP() end, Settings.Drones.FPV.Enabled)
+CreateToggle("Bober", 50, Contents.Drones, function(v) Settings.Drones.Bober.Enabled = v RefreshESP() end, Settings.Drones.Bober.Enabled)
+CreateToggle("Shahed 136", 90, Contents.Drones, function(v) Settings.Drones.Shahed136.Enabled = v RefreshESP() end, Settings.Drones.Shahed136.Enabled)
+CreateToggle("Gerbera", 130, Contents.Drones, function(v) Settings.Drones.Gerbera.Enabled = v RefreshESP() end, Settings.Drones.Gerbera.Enabled)
+CreateToggle("Lancet", 170, Contents.Drones, function(v) Settings.Drones.Lancet.Enabled = v RefreshESP() end, Settings.Drones.Lancet.Enabled)
 
-local PrintBtn = Instance.new("TextButton")
-PrintBtn.Size = UDim2.new(0.9, 0, 0, 35)
-PrintBtn.Position = UDim2.new(0.05, 0, 0, 100)
-PrintBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
-PrintBtn.Text = "Print Names to Console (F9)"
-PrintBtn.TextColor3 = Color3.new(1, 1, 1)
-PrintBtn.Font = Enum.Font.Gotham
-PrintBtn.Parent = DebugContent
-Instance.new("UICorner", PrintBtn).CornerRadius = UDim.new(0, 6)
-PrintBtn.MouseButton1Click:Connect(function() print("--- Dump ---") for _, v in ipairs(Workspace:GetDescendants()) do if v:IsA("Model") then print("Model: " .. v.Name) end end end)
+-- Rockets
+CreateToggle("All Missiles", 10, Contents.Rockets, function(v) Settings.Rockets.Missile.Enabled = v RefreshESP() end, Settings.Rockets.Missile.Enabled)
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
-CloseBtn.Position = UDim2.new(0.05, 0, 1, -35)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-CloseBtn.Text = "Destroy GUI"
-CloseBtn.TextColor3 = Color3.new(1, 1, 1)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Parent = MainFrame
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+-- Settings
+CreateToggle("Player ESP", 10, Contents.Settings, function(v) Settings.Players.Enabled = v RefreshESP() end, Settings.Players.Enabled)
+local StyleBtn = Instance.new("TextButton")
+StyleBtn.Size = UDim2.new(0.9, 0, 0, 35)
+StyleBtn.Position = UDim2.new(0.05, 0, 0, 50)
+StyleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+StyleBtn.Text = "ESP Style: " .. Settings.Visuals.Style
+StyleBtn.TextColor3 = Color3.new(1, 1, 1)
+StyleBtn.Font = Enum.Font.Gotham
+StyleBtn.Parent = Contents.Settings
+Instance.new("UICorner", StyleBtn).CornerRadius = UDim.new(0, 6)
+StyleBtn.MouseButton1Click:Connect(function()
+    Settings.Visuals.Style = (Settings.Visuals.Style == "Highlight" and "Box" or "Highlight")
+    StyleBtn.Text = "ESP Style: " .. Settings.Visuals.Style
+    RefreshESP()
+end)
 
--- Draggable
-local dragging, dragInput, dragStart, startPos
-MainFrame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = input.Position startPos = MainFrame.Position end end)
-UserInputService.InputChanged:Connect(function(input) if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then local delta = input.Position - dragStart MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+-- Debug
+CreateToggle("Givers ESP", 10, Contents.Debug, function(v) Settings.Givers.Enabled = v RefreshESP() end, Settings.Givers.Enabled)
+CreateToggle("Universal ESP", 50, Contents.Debug, function(v) Settings.Universal.Enabled = v RefreshESP() end, Settings.Universal.Enabled)
+local Prnt = Instance.new("TextButton")
+Prnt.Size = UDim2.new(0.9, 0, 0, 35)
+Prnt.Position = UDim2.new(0.05, 0, 0, 90)
+Prnt.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+Prnt.Text = "Print Names (F9)"
+Prnt.TextColor3 = Color3.new(1,1,1)
+Prnt.Parent = Contents.Debug
+Instance.new("UICorner", Prnt).CornerRadius = UDim.new(0, 6)
+Prnt.MouseButton1Click:Connect(function() for _, v in ipairs(Workspace:GetDescendants()) do if v:IsA("Model") then print(v.Name) end end end)
 
-Workspace.DescendantAdded:Connect(function(obj) task.wait(0.1) CheckObject(obj) end)
-for _, obj in ipairs(Workspace:GetDescendants()) do CheckObject(obj) end
-print("[DronePoint ESP] Loaded!")
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.new(0.9, 0, 0, 30)
+Close.Position = UDim2.new(0.05, 0, 1, -35)
+Close.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+Close.Text = "Destroy GUI"
+Close.TextColor3 = Color3.new(1, 1, 1)
+Close.Font = Enum.Font.GothamBold
+Close.Parent = MainFrame
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 6)
+Close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- Drag
+local d, di, ds, sp
+MainFrame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = true ds = i.Position sp = MainFrame.Position end end)
+UserInputService.InputChanged:Connect(function(i) if d and i.UserInputType == Enum.UserInputType.MouseMovement then local dl = i.Position - ds MainFrame.Position = UDim2.new(sp.X.Scale, sp.X.Offset + dl.X, sp.Y.Scale, sp.Y.Offset + dl.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = false end end)
+
+Workspace.DescendantAdded:Connect(function(o) task.wait(0.1) CheckObject(o) end)
+for _, o in ipairs(Workspace:GetDescendants()) do CheckObject(o) end
+print("[DronePoint] Style & Player Update Loaded!")

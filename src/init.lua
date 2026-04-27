@@ -13,7 +13,7 @@ local Settings = {
     Shahed = {
         Enabled = true,
         Color = Color3.fromRGB(255, 165, 0), -- Orange
-        Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера", "GrbrBl", "dronenight", "droneday"}
+        Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера", "GrbrBl", "dronenight", "droneday", "Jet", "238"}
     },
     Missile = {
         Enabled = true,
@@ -91,18 +91,24 @@ end
 local function CheckObject(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
     
-    -- Prevent highlighting parts of an already highlighted model
-    if object.Parent and (object.Parent:FindFirstChild("ESPHighlight") or object.Parent:IsA("Model") and object.Parent.Name ~= "Workspace") then
-        local p = object.Parent
-        while p and p ~= Workspace do
-            if p:FindFirstChild("ESPHighlight") then return end
-            p = p.Parent
-        end
+    -- If it's a part of a drone (like a wing), try to find the main model first
+    local target = object
+    if object:IsA("BasePart") and object.Parent and object.Parent:IsA("Model") and object.Parent ~= Workspace then
+        target = object.Parent
     end
 
-    local name = object.Name:lower()
+    -- Prevent multi-highlighting
+    if target:FindFirstChild("ESPHighlight") then return end
+    local p = target.Parent
+    while p and p ~= Workspace do
+        if p:FindFirstChild("ESPHighlight") then return end
+        p = p.Parent
+    end
+
+    local name = target.Name:lower()
+    local partName = object.Name:lower()
     
-    -- Custom Name Mapping for Display
+    -- Custom Name Mapping
     local NameMap = {
         ["bbrn"] = "Bober",
         ["grbrbl"] = "Gerbera",
@@ -111,43 +117,43 @@ local function CheckObject(object)
         ["ognik"] = "Ognik"
     }
     
-    local displayName = NameMap[name] or object.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
+    local displayName = NameMap[name] or target.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
     
-    -- Check Givers (Tables/Stands)
+    -- Check Givers
     for _, n in ipairs(Settings.Givers.Names) do
-        if name:find(n:lower()) then
-            ApplyESP(object, Settings.Givers, displayName)
+        if name:find(n:lower()) or partName:find(n:lower()) then
+            ApplyESP(target, Settings.Givers, displayName)
             return
         end
     end
     
     -- Check FPV
     for _, n in ipairs(Settings.FPV.Names) do
-        if name:find(n:lower()) then
-            ApplyESP(object, Settings.FPV, displayName)
+        if name:find(n:lower()) or partName:find(n:lower()) then
+            ApplyESP(target, Settings.FPV, displayName)
             return
         end
     end
     
     -- Check Shahed/Geran
     for _, n in ipairs(Settings.Shahed.Names) do
-        if name:find(n:lower()) then
-            ApplyESP(object, Settings.Shahed, displayName)
+        if name:find(n:lower()) or partName:find(n:lower()) then
+            ApplyESP(target, Settings.Shahed, displayName)
             return
         end
     end
     
     -- Check Missile
     for _, n in ipairs(Settings.Missile.Names) do
-        if name:find(n:lower()) then
-            ApplyESP(object, Settings.Missile, displayName)
+        if name:find(n:lower()) or partName:find(n:lower()) then
+            ApplyESP(target, Settings.Missile, displayName)
             return
         end
     end
     
-    -- Universal check for drones/missiles (Fuselage/MainPart)
-    if object:FindFirstChild("Fuselage") or object:FindFirstChild("MainPart") then
-        ApplyESP(object, Settings.FPV, displayName)
+    -- Universal check (Fuselage/MainPart/Wing)
+    if target:FindFirstChild("Fuselage") or target:FindFirstChild("MainPart") or partName:find("wing") or partName:find("fuselage") then
+        ApplyESP(target, Settings.FPV, displayName)
         return
     end
 end

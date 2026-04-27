@@ -13,7 +13,7 @@ local Settings = {
     Shahed = {
         Enabled = true,
         Color = Color3.fromRGB(255, 165, 0), -- Orange
-        Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера"}
+        Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера", "GrbrBl", "dronenight", "droneday"}
     },
     Missile = {
         Enabled = true,
@@ -102,8 +102,16 @@ local function CheckObject(object)
 
     local name = object.Name:lower()
     
-    -- Clean Name for Display
-    local displayName = object.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
+    -- Custom Name Mapping for Display
+    local NameMap = {
+        ["bbrn"] = "Bober",
+        ["grbrbl"] = "Gerbera",
+        ["dronenight"] = "Shahed 136",
+        ["droneday"] = "Shahed 136",
+        ["ognik"] = "Ognik"
+    }
+    
+    local displayName = NameMap[name] or object.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
     
     -- Check Givers (Tables/Stands)
     for _, n in ipairs(Settings.Givers.Names) do

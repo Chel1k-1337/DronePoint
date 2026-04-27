@@ -20,6 +20,11 @@ local Settings = {
         Color = Color3.fromRGB(255, 255, 0), -- Yellow
         Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic"}
     },
+    Givers = {
+        Enabled = true,
+        Color = Color3.fromRGB(0, 255, 255), -- Cyan
+        Names = {"Giver", "Stand", "Table", "Стол", "Выдача"}
+    },
     Visuals = {
         FillOpacity = 0.5,
         OutlineOpacity = 0,
@@ -50,29 +55,36 @@ local function ApplyESP(object, config)
         highlight.Adornee = object
         highlight.Parent = object
         
-        if object:IsA("Model") then
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "ESPLabel"
-            billboard.Size = UDim2.new(0, 100, 0, 50)
-            billboard.AlwaysOnTop = true
-            billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-            
-            local text = Instance.new("TextLabel")
-            text.Parent = billboard
-            text.BackgroundTransparency = 1
-            text.Size = UDim2.new(1, 0, 1, 0)
-            text.Text = object.Name
-            text.TextColor3 = config.Color
-            text.TextStrokeTransparency = 0
-            text.Font = Enum.Font.GothamBold
-            text.TextSize = 14
-            
-            billboard.Parent = object
-        end
+        -- Improved Label for both Models and Parts
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESPLabel"
+        billboard.Size = UDim2.new(0, 150, 0, 50)
+        billboard.AlwaysOnTop = true
+        billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+        
+        local text = Instance.new("TextLabel")
+        text.Parent = billboard
+        text.BackgroundTransparency = 1
+        text.Size = UDim2.new(1, 0, 1, 0)
+        text.Text = object.Name
+        text.TextColor3 = config.Color
+        text.TextStrokeTransparency = 0.5
+        text.TextStrokeColor3 = Color3.new(0, 0, 0)
+        text.Font = Enum.Font.GothamBold
+        text.TextSize = 16
+        text.TextScaled = false
+        
+        billboard.Parent = object
     else
         highlight.Enabled = config.Enabled
+        highlight.FillColor = config.Color
         local label = object:FindFirstChild("ESPLabel")
-        if label then label.Enabled = config.Enabled end
+        if label then 
+            label.Enabled = config.Enabled 
+            if label:FindFirstChildOfClass("TextLabel") then
+                label:FindFirstChildOfClass("TextLabel").TextColor3 = config.Color
+            end
+        end
     end
 end
 
@@ -80,6 +92,14 @@ local function CheckObject(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
     
     local name = object.Name:lower()
+    
+    -- Check Givers (Tables/Stands) - check this first to avoid misidentification
+    for _, n in ipairs(Settings.Givers.Names) do
+        if name:find(n:lower()) then
+            ApplyESP(object, Settings.Givers)
+            return
+        end
+    end
     
     -- Check FPV
     for _, n in ipairs(Settings.FPV.Names) do
@@ -120,15 +140,18 @@ local function RefreshESP()
             local isFPV = false
             local isShahed = false
             local isMissile = false
+            local isGiver = false
             
             local name = obj.Name:lower()
             for _, n in ipairs(Settings.FPV.Names) do if name:find(n:lower()) then isFPV = true break end end
             for _, n in ipairs(Settings.Shahed.Names) do if name:find(n:lower()) then isShahed = true break end end
             for _, n in ipairs(Settings.Missile.Names) do if name:find(n:lower()) then isMissile = true break end end
+            for _, n in ipairs(Settings.Givers.Names) do if name:find(n:lower()) then isGiver = true break end end
             
             if isFPV then highlight.Enabled = Settings.FPV.Enabled
             elseif isShahed then highlight.Enabled = Settings.Shahed.Enabled
-            elseif isMissile then highlight.Enabled = Settings.Missile.Enabled end
+            elseif isMissile then highlight.Enabled = Settings.Missile.Enabled
+            elseif isGiver then highlight.Enabled = Settings.Givers.Enabled end
             
             local label = obj:FindFirstChild("ESPLabel")
             if label then label.Enabled = highlight.Enabled end
@@ -146,7 +169,7 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 250, 0, 320)
+MainFrame.Size = UDim2.new(0, 250, 0, 360)
 MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
@@ -245,10 +268,11 @@ end
 CreateToggle("FPV ESP", 60, function(v) Settings.FPV.Enabled = v RefreshESP() end, Settings.FPV.Enabled)
 CreateToggle("Shahed ESP", 110, function(v) Settings.Shahed.Enabled = v RefreshESP() end, Settings.Shahed.Enabled)
 CreateToggle("Missile ESP", 160, function(v) Settings.Missile.Enabled = v RefreshESP() end, Settings.Missile.Enabled)
+CreateToggle("Givers ESP", 210, function(v) Settings.Givers.Enabled = v RefreshESP() end, Settings.Givers.Enabled)
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0.9, 0, 0, 40)
-CloseBtn.Position = UDim2.new(0.05, 0, 0, 230)
+CloseBtn.Position = UDim2.new(0.05, 0, 0, 260)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 CloseBtn.Text = "Destroy GUI"
 CloseBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -265,7 +289,7 @@ end)
 
 local DebugBtn = Instance.new("TextButton")
 DebugBtn.Size = UDim2.new(0.9, 0, 0, 30)
-DebugBtn.Position = UDim2.new(0.05, 0, 0, 275)
+DebugBtn.Position = UDim2.new(0.05, 0, 0, 310)
 DebugBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
 DebugBtn.Text = "Print Names to Console (F9)"
 DebugBtn.TextColor3 = Color3.new(1, 1, 1)

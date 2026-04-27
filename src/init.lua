@@ -1,6 +1,6 @@
 --[[
-    DronePoint ESP Script v1.5
-    Fixed Labels & 2D Boxes
+    DronePoint ESP Script v1.6
+    Fixed Players, 2D Boxes & Color Picker
 ]]
 
 local Settings = {
@@ -14,14 +14,10 @@ local Settings = {
     Rockets = {
         Missile = { Enabled = true, Color = Color3.fromRGB(255, 255, 0), Names = {"Missile", "Rocket", "Projectile", "Neptune", "Нептун", "Ballistic", "H"} }
     },
-    Players = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
+    Players = { Enabled = false, Color = Color3.fromRGB(0, 255, 0) }, -- Default Green
     Givers = { Enabled = true, Color = Color3.fromRGB(0, 255, 255), Names = {"Giver", "Stand", "Table", "Стол", "Выдача"} },
     Universal = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
-    Visuals = {
-        Style = "Highlight", -- "Highlight" or "Box"
-        FillOpacity = 0.5,
-        OutlineOpacity = 0
-    }
+    Visuals = { Style = "Highlight", FillOpacity = 0.5, OutlineOpacity = 0 }
 }
 
 local RunService = game:GetService("RunService")
@@ -38,37 +34,40 @@ ScreenGui.Parent = (RunService:IsStudio() and LocalPlayer.PlayerGui or CoreGui)
 ScreenGui.IgnoreGuiInset = true
 
 local ActiveESP = {}
-
-local function Create2DBox()
-    local box = Instance.new("Frame")
-    box.BackgroundTransparency = 1
-    box.BorderSizePixel = 0
-    local outline = Instance.new("UIStroke")
-    outline.Thickness = 1
-    outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    outline.Parent = box
-    return box
-end
+local ColorPresets = {
+    {Name = "Red", Color = Color3.fromRGB(255, 0, 0)},
+    {Name = "Green", Color = Color3.fromRGB(0, 255, 0)},
+    {Name = "Blue", Color = Color3.fromRGB(0, 100, 255)},
+    {Name = "Yellow", Color = Color3.fromRGB(255, 255, 0)},
+    {Name = "Orange", Color = Color3.fromRGB(255, 165, 0)},
+    {Name = "White", Color = Color3.fromRGB(255, 255, 255)}
+}
 
 local function ApplyESP(object, config, displayName)
     if not object or not object.Parent then return end
     local id = object:GetDebugId()
     
     if not ActiveESP[id] then
+        local box = Instance.new("Frame")
+        box.BackgroundTransparency = 1
+        box.BorderSizePixel = 0
+        local outline = Instance.new("UIStroke")
+        outline.Thickness = 1
+        outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        outline.Parent = box
+        box.Parent = ScreenGui
+        
         ActiveESP[id] = {
             Object = object,
             Config = config,
             Name = displayName or object.Name,
             Highlight = nil,
-            Box = Create2DBox(),
+            Box = box,
             Label = nil
         }
-        ActiveESP[id].Box.Parent = ScreenGui
     end
     
     local data = ActiveESP[id]
-    data.Config = config -- Update config in case it changed
-    
     local isEnabled = (config.Enabled or Settings.Universal.Enabled)
     
     -- Highlight
@@ -86,8 +85,7 @@ local function ApplyESP(object, config, displayName)
         data.Highlight.Enabled = false
     end
     
-    -- 2D Box Visibility (Update happens in RenderStepped)
-    data.Box.Visible = (Settings.Visuals.Style == "Box" and isEnabled)
+    -- Box Color
     data.Box.UIStroke.Color = Settings.Universal.Enabled and Settings.Universal.Color or config.Color
     
     -- Label
@@ -115,12 +113,20 @@ end
 
 local function CheckObject(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
-    if Players:GetPlayerFromCharacter(object) then
-        if object ~= LocalPlayer.Character then ApplyESP(object, Settings.Players, object.Name) end
+    
+    -- Player Check
+    local player = Players:GetPlayerFromCharacter(object)
+    if player then
+        if player ~= LocalPlayer then
+            ApplyESP(object, Settings.Players, player.Name)
+        end
         return
     end
+
     local target = object
-    if object:IsA("BasePart") and object.Parent and object.Parent:IsA("Model") and object.Parent ~= Workspace then target = object.Parent end
+    if object:IsA("BasePart") and object.Parent and object.Parent:IsA("Model") and object.Parent ~= Workspace then
+        target = object.Parent
+    end
     if ActiveESP[target:GetDebugId()] then return end
     
     local name = target.Name:lower()
@@ -132,7 +138,6 @@ local function CheckObject(object)
     for _, config in pairs(Settings.Drones) do for _, n in ipairs(config.Names) do if name:find(n:lower()) or partName:find(n:lower()) then ApplyESP(target, config, displayName) return end end end
     for _, n in ipairs(Settings.Rockets.Missile.Names) do if name:find(n:lower()) or partName:find(n:lower()) then ApplyESP(target, Settings.Rockets.Missile, displayName) return end end
     if target:FindFirstChild("Fuselage") or target:FindFirstChild("MainPart") or partName:find("wing") or partName:find("fuselage") then ApplyESP(target, Settings.Drones.FPV, displayName) return end
-    if Settings.Universal.Enabled then ApplyESP(target, Settings.Universal, displayName) end
 end
 
 RunService.RenderStepped:Connect(function()
@@ -146,48 +151,33 @@ RunService.RenderStepped:Connect(function()
         local isEnabled = (data.Config.Enabled or Settings.Universal.Enabled)
         if isEnabled and Settings.Visuals.Style == "Box" then
             local cf, size = data.Object:GetBoundingBox()
-            local corners = {
-                cf * CFrame.new(-size.X/2, size.Y/2, size.Z/2),
-                cf * CFrame.new(size.X/2, size.Y/2, size.Z/2),
-                cf * CFrame.new(-size.X/2, -size.Y/2, size.Z/2),
-                cf * CFrame.new(size.X/2, -size.Y/2, size.Z/2),
-                cf * CFrame.new(-size.X/2, size.Y/2, -size.Z/2),
-                cf * CFrame.new(size.X/2, size.Y/2, -size.Z/2),
-                cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2),
-                cf * CFrame.new(size.X/2, -size.Y/2, -size.Z/2)
-            }
-            
-            local minX, minY = math.huge, math.huge
-            local maxX, maxY = -math.huge, -math.huge
-            local onScreen = false
-            
-            for _, corner in ipairs(corners) do
-                local screenPos, visible = Camera:WorldToViewportPoint(corner.Position)
-                if visible then
-                    onScreen = true
-                    minX = math.min(minX, screenPos.X)
-                    minY = math.min(minY, screenPos.Y)
-                    maxX = math.max(maxX, screenPos.X)
-                    maxY = math.max(maxY, screenPos.Y)
-                end
-            end
+            local screenPos, onScreen = Camera:WorldToViewportPoint(cf.Position)
             
             if onScreen then
+                local topPos = Camera:WorldToViewportPoint(cf.Position + Vector3.new(0, size.Y/2, 0))
+                local bottomPos = Camera:WorldToViewportPoint(cf.Position - Vector3.new(0, size.Y/2, 0))
+                local height = math.abs(topPos.Y - bottomPos.Y)
+                local width = height * 0.7
+                
                 data.Box.Visible = true
-                data.Box.Position = UDim2.new(0, minX, 0, minY)
-                data.Box.Size = UDim2.new(0, maxX - minX, 0, maxY - minY)
+                data.Box.Position = UDim2.new(0, screenPos.X - width/2, 0, screenPos.Y - height/2)
+                data.Box.Size = UDim2.new(0, width, 0, height)
             else
                 data.Box.Visible = false
             end
         else
             data.Box.Visible = false
         end
-        
-        -- Update Label/Highlight State
         if data.Label then data.Label.Enabled = isEnabled end
         if data.Highlight then data.Highlight.Enabled = (isEnabled and Settings.Visuals.Style == "Highlight") end
     end
 end)
+
+-- Player Listeners
+local function CharacterAdded(char) task.wait(1) CheckObject(char) end
+local function PlayerAdded(p) p.CharacterAdded:Connect(CharacterAdded) if p.Character then CharacterAdded(p.Character) end end
+Players.PlayerAdded:Connect(PlayerAdded)
+for _, p in ipairs(Players:GetPlayers()) do PlayerAdded(p) end
 
 -- GUI
 local MainGUI = Instance.new("ScreenGui")
@@ -196,8 +186,8 @@ MainGUI.Parent = (RunService:IsStudio() and LocalPlayer.PlayerGui or CoreGui)
 MainGUI.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 300, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -240)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = MainGUI
@@ -206,7 +196,7 @@ Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-Title.Text = "DronePoint Ultimate v1.5"
+Title.Text = "DronePoint Ultimate v1.6"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -227,7 +217,7 @@ local function CreateTab(name, x, w)
     b.Text = name
     b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 12
+    b.TextSize = 11
     b.Parent = TabBar
     return b
 end
@@ -239,7 +229,7 @@ local function CreateContent()
     c.Position = UDim2.new(0, 0, 0, 75)
     c.BackgroundTransparency = 1
     c.ScrollBarThickness = 2
-    c.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+    c.CanvasSize = UDim2.new(0, 0, 2, 0)
     c.Visible = false
     c.Parent = MainFrame
     return c
@@ -260,13 +250,13 @@ local function CreateToggle(n, y, p, c, d)
     f.Parent = p
     Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
     local l = Instance.new("TextLabel")
-    l.Size = UDim2.new(0.7, 0, 1, 0)
+    l.Size = UDim2.new(0.5, 0, 1, 0)
     l.Position = UDim2.new(0.05, 0, 0, 0)
     l.BackgroundTransparency = 1
     l.Text = n
     l.TextColor3 = Color3.new(1, 1, 1)
     l.Font = Enum.Font.Gotham
-    l.TextSize = 13
+    l.TextSize = 12
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.Parent = f
     local b = Instance.new("TextButton")
@@ -280,18 +270,39 @@ local function CreateToggle(n, y, p, c, d)
     b.MouseButton1Click:Connect(function() a = not a b.BackgroundColor3 = a and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 0) c(a) end)
 end
 
+local function CreateColorSelector(y, p, config)
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(0.9, 0, 0, 30)
+    f.Position = UDim2.new(0.05, 0, 0, y)
+    f.BackgroundTransparency = 1
+    f.Parent = p
+    for i, preset in ipairs(ColorPresets) do
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0.14, 0, 1, 0)
+        b.Position = UDim2.new((i-1)*0.16, 0, 0, 0)
+        b.BackgroundColor3 = preset.Color
+        b.Text = ""
+        b.Parent = f
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+        b.MouseButton1Click:Connect(function() config.Color = preset.Color end)
+    end
+end
+
 CreateToggle("FPV Drone", 10, Contents.Drones, function(v) Settings.Drones.FPV.Enabled = v end, Settings.Drones.FPV.Enabled)
-CreateToggle("Bober", 50, Contents.Drones, function(v) Settings.Drones.Bober.Enabled = v end, Settings.Drones.Bober.Enabled)
-CreateToggle("Shahed 136", 90, Contents.Drones, function(v) Settings.Drones.Shahed136.Enabled = v end, Settings.Drones.Shahed136.Enabled)
-CreateToggle("Gerbera", 130, Contents.Drones, function(v) Settings.Drones.Gerbera.Enabled = v end, Settings.Drones.Gerbera.Enabled)
-CreateToggle("Lancet", 170, Contents.Drones, function(v) Settings.Drones.Lancet.Enabled = v end, Settings.Drones.Lancet.Enabled)
+CreateColorSelector(50, Contents.Drones, Settings.Drones.FPV)
+CreateToggle("Bober", 90, Contents.Drones, function(v) Settings.Drones.Bober.Enabled = v end, Settings.Drones.Bober.Enabled)
+CreateToggle("Shahed 136", 130, Contents.Drones, function(v) Settings.Drones.Shahed136.Enabled = v end, Settings.Drones.Shahed136.Enabled)
+CreateToggle("Gerbera", 170, Contents.Drones, function(v) Settings.Drones.Gerbera.Enabled = v end, Settings.Drones.Gerbera.Enabled)
+CreateToggle("Lancet", 210, Contents.Drones, function(v) Settings.Drones.Lancet.Enabled = v end, Settings.Drones.Lancet.Enabled)
 
 CreateToggle("All Missiles", 10, Contents.Rockets, function(v) Settings.Rockets.Missile.Enabled = v end, Settings.Rockets.Missile.Enabled)
+CreateColorSelector(50, Contents.Rockets, Settings.Rockets.Missile)
 
 CreateToggle("Player ESP", 10, Contents.Settings, function(v) Settings.Players.Enabled = v end, Settings.Players.Enabled)
+CreateColorSelector(50, Contents.Settings, Settings.Players)
 local StyleBtn = Instance.new("TextButton")
 StyleBtn.Size = UDim2.new(0.9, 0, 0, 35)
-StyleBtn.Position = UDim2.new(0.05, 0, 0, 50)
+StyleBtn.Position = UDim2.new(0.05, 0, 0, 90)
 StyleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 StyleBtn.Text = "ESP Style: " .. Settings.Visuals.Style
 StyleBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -302,9 +313,6 @@ StyleBtn.MouseButton1Click:Connect(function()
     Settings.Visuals.Style = (Settings.Visuals.Style == "Highlight" and "Box" or "Highlight")
     StyleBtn.Text = "ESP Style: " .. Settings.Visuals.Style
 end)
-
-CreateToggle("Givers ESP", 10, Contents.Debug, function(v) Settings.Givers.Enabled = v end, Settings.Givers.Enabled)
-CreateToggle("Universal ESP", 50, Contents.Debug, function(v) Settings.Universal.Enabled = v end, Settings.Universal.Enabled)
 
 local Close = Instance.new("TextButton")
 Close.Size = UDim2.new(0.9, 0, 0, 30)
@@ -325,4 +333,4 @@ UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserI
 
 Workspace.DescendantAdded:Connect(function(o) task.wait(0.1) CheckObject(o) end)
 for _, o in ipairs(Workspace:GetDescendants()) do CheckObject(o) end
-print("[DronePoint] v1.5 Loaded!")
+print("[DronePoint] v1.6 Loaded!")

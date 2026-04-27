@@ -1,5 +1,5 @@
 --[[
-    DronePoint Ultimate v2.0 (Modular & Premium)
+    DronePoint Ultimate v2.2 (Stability & Performance)
     Author: Antigravity AI
 ]]
 
@@ -27,15 +27,24 @@ end
 local ScreenGui = GUI.Init(Settings, Utils)
 ESP.Init(Settings, ScreenGui)
 
--- Object Tracking
+-- PERFORMANCE OPTIMIZED TRACKING
 local Workspace = game:GetService("Workspace")
-Workspace.DescendantAdded:Connect(function(obj)
-    task.wait(0.1)
+
+-- Scan only Models in Workspace (where drones/players actually are)
+local function InitialScan()
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            ESP.Check(obj)
+        end
+    end
+end
+
+Workspace.ChildAdded:Connect(function(obj)
+    -- Small delay to let the model load its name/parts
+    task.wait(0.2)
     ESP.Check(obj)
 end)
 
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    ESP.Check(obj)
-end
+task.spawn(InitialScan)
 
-print("[DronePoint] v2.0 Premium Modular Loaded!")
+print("[DronePoint] v2.2 Stability Update Loaded!")

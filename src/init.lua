@@ -13,7 +13,7 @@ local Settings = {
     Shahed = {
         Enabled = true,
         Color = Color3.fromRGB(255, 165, 0), -- Orange
-        Names = {"Shahed", "Geran", "Kamikaze", "Герань"}
+        Names = {"Shahed", "Geran", "Kamikaze", "Герань", "Gerbera", "Гербера"}
     },
     Missile = {
         Enabled = true,
@@ -41,7 +41,7 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ESP Logic
-local function ApplyESP(object, config)
+local function ApplyESP(object, config, displayName)
     if not config.Enabled then return end
     
     local highlight = object:FindFirstChild("ESPHighlight")
@@ -66,7 +66,7 @@ local function ApplyESP(object, config)
         text.Parent = billboard
         text.BackgroundTransparency = 1
         text.Size = UDim2.new(1, 0, 1, 0)
-        text.Text = object.Name
+        text.Text = displayName or object.Name
         text.TextColor3 = config.Color
         text.TextStrokeTransparency = 0.5
         text.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -91,12 +91,24 @@ end
 local function CheckObject(object)
     if not object:IsA("Model") and not object:IsA("BasePart") then return end
     
+    -- Prevent highlighting parts of an already highlighted model
+    if object.Parent and (object.Parent:FindFirstChild("ESPHighlight") or object.Parent:IsA("Model") and object.Parent.Name ~= "Workspace") then
+        local p = object.Parent
+        while p and p ~= Workspace do
+            if p:FindFirstChild("ESPHighlight") then return end
+            p = p.Parent
+        end
+    end
+
     local name = object.Name:lower()
     
-    -- Check Givers (Tables/Stands) - check this first to avoid misidentification
+    -- Clean Name for Display
+    local displayName = object.Name:gsub("Meshes/", ""):gsub("_pCube%d+", ""):gsub("_polySurface%d+", ""):gsub("%d+", "")
+    
+    -- Check Givers (Tables/Stands)
     for _, n in ipairs(Settings.Givers.Names) do
         if name:find(n:lower()) then
-            ApplyESP(object, Settings.Givers)
+            ApplyESP(object, Settings.Givers, displayName)
             return
         end
     end
@@ -104,15 +116,15 @@ local function CheckObject(object)
     -- Check FPV
     for _, n in ipairs(Settings.FPV.Names) do
         if name:find(n:lower()) then
-            ApplyESP(object, Settings.FPV)
+            ApplyESP(object, Settings.FPV, displayName)
             return
         end
     end
     
-    -- Check Shahed
+    -- Check Shahed/Geran
     for _, n in ipairs(Settings.Shahed.Names) do
         if name:find(n:lower()) then
-            ApplyESP(object, Settings.Shahed)
+            ApplyESP(object, Settings.Shahed, displayName)
             return
         end
     end
@@ -120,14 +132,14 @@ local function CheckObject(object)
     -- Check Missile
     for _, n in ipairs(Settings.Missile.Names) do
         if name:find(n:lower()) then
-            ApplyESP(object, Settings.Missile)
+            ApplyESP(object, Settings.Missile, displayName)
             return
         end
     end
     
     -- Universal check for drones/missiles (Fuselage/MainPart)
     if object:FindFirstChild("Fuselage") or object:FindFirstChild("MainPart") then
-        ApplyESP(object, Settings.FPV)
+        ApplyESP(object, Settings.FPV, displayName)
         return
     end
 end

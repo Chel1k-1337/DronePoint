@@ -8,7 +8,7 @@ local Settings = {
     FPV = {
         Enabled = true,
         Color = Color3.fromRGB(255, 0, 0), -- Red
-        Names = {"FPV", "Drone", "Quadcopter", "Bober", "Бобер", "Expert"}
+        Names = {"FPV", "Drone", "Quadcopter", "Bober", "Бобер", "Expert", "bbrn", "Ognik"}
     },
     Shahed = {
         Enabled = true,
@@ -103,6 +103,12 @@ local function CheckObject(object)
             ApplyESP(object, Settings.Missile)
             return
         end
+    end
+    
+    -- Universal check for drones/missiles (Fuselage/MainPart)
+    if object:FindFirstChild("Fuselage") or object:FindFirstChild("MainPart") then
+        ApplyESP(object, Settings.FPV)
+        return
     end
 end
 

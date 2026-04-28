@@ -59,7 +59,7 @@ function ESP.Init(settingsRef, guiParent)
                 data.Highlight.Enabled = false
             end
             
-            -- 2D Box Logic (Simplified & Optimized)
+            -- 2D Box Logic (Enhanced)
             if style == "Box" then
                 local cf, size = obj:GetBoundingBox()
                 local screenPos, onScreen = Camera:WorldToViewportPoint(cf.Position)
@@ -69,12 +69,38 @@ function ESP.Init(settingsRef, guiParent)
                     local topPos = Camera:WorldToViewportPoint((cf * CFrame.new(0, size.Y/2, 0)).Position)
                     local bottomPos = Camera:WorldToViewportPoint((cf * CFrame.new(0, -size.Y/2, 0)).Position)
                     local height = math.abs(topPos.Y - bottomPos.Y)
-                    local width = height * 0.7
+                    local width = height * 0.75
+                    
+                    local boxPos = UDim2.new(0, screenPos.X - width/2, 0, screenPos.Y - height/2)
+                    local boxSize = UDim2.new(0, width, 0, height)
                     
                     data.Box.Visible = true
-                    data.Box.Position = UDim2.new(0, screenPos.X - width/2, 0, screenPos.Y - height/2)
-                    data.Box.Size = UDim2.new(0, width, 0, height)
-                    data.Box.UIStroke.Color = color
+                    data.Box.Position = boxPos
+                    data.Box.Size = boxSize
+                    
+                    local boxStyle = Settings.Visuals.BoxStyle
+                    local showOutline = Settings.Visuals.ShowOutline
+                    
+                    -- Update Box Parts
+                    data.Box.Main.Visible = (boxStyle == "Full")
+                    data.Box.Corners.Visible = (boxStyle == "Corners")
+                    
+                    if boxStyle == "Full" then
+                        data.Box.Main.UIStroke.Color = color
+                        data.Box.Main.UIStroke.Thickness = 1
+                        if data.Box.Main:FindFirstChild("Outline") then
+                            data.Box.Main.Outline.Enabled = showOutline
+                        end
+                    else
+                        for _, corner in ipairs(data.Box.Corners:GetChildren()) do
+                            if corner:IsA("Frame") then
+                                corner.BackgroundColor3 = color
+                                if corner:FindFirstChild("UIStroke") then
+                                    corner.UIStroke.Enabled = showOutline
+                                end
+                            end
+                        end
+                    end
                 else
                     data.Box.Visible = false
                 end
@@ -98,13 +124,63 @@ function ESP.Apply(object, config, displayName)
     if ActiveESP[id] then return end -- Already tracked
     
     local box = Instance.new("Frame")
+    box.Name = "ESPBox"
     box.BackgroundTransparency = 1
     box.BorderSizePixel = 0
-    local outline = Instance.new("UIStroke")
-    outline.Thickness = 1
-    outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    outline.Parent = box
     box.Parent = ScreenGui
+    
+    -- Full Box Style
+    local main = Instance.new("Frame")
+    main.Name = "Main"
+    main.Size = UDim2.new(1, 0, 1, 0)
+    main.BackgroundTransparency = 1
+    main.BorderSizePixel = 0
+    main.Parent = box
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = main
+    
+    local outline = Instance.new("UIStroke")
+    outline.Name = "Outline"
+    outline.Thickness = 2.5
+    outline.Color = Color3.new(0, 0, 0)
+    outline.Transparency = 0.6
+    outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    outline.Parent = main
+    
+    -- Corners Style
+    local corners = Instance.new("Frame")
+    corners.Name = "Corners"
+    corners.Size = UDim2.new(1, 0, 1, 0)
+    corners.BackgroundTransparency = 1
+    corners.Parent = box
+    
+    local cornerData = {
+        {UDim2.new(0, 0, 0, 0), UDim2.new(0, 2, 0, 10)}, -- TL Vertical
+        {UDim2.new(0, 0, 0, 0), UDim2.new(0, 10, 0, 2)}, -- TL Horizontal
+        {UDim2.new(1, -2, 0, 0), UDim2.new(0, 2, 0, 10)}, -- TR Vertical
+        {UDim2.new(1, -10, 0, 0), UDim2.new(0, 10, 0, 2)}, -- TR Horizontal
+        {UDim2.new(0, 0, 1, -10), UDim2.new(0, 2, 0, 10)}, -- BL Vertical
+        {UDim2.new(0, 0, 1, -2), UDim2.new(0, 10, 0, 2)}, -- BL Horizontal
+        {UDim2.new(1, -2, 1, -10), UDim2.new(0, 2, 0, 10)}, -- BR Vertical
+        {UDim2.new(1, -10, 1, -2), UDim2.new(0, 10, 0, 2)} -- BR Horizontal
+    }
+    
+    for i, d in ipairs(cornerData) do
+        local c = Instance.new("Frame")
+        c.Position = d[1]
+        c.Size = d[2]
+        c.BorderSizePixel = 0
+        c.Parent = corners
+        
+        local cOutline = Instance.new("UIStroke")
+        cOutline.Thickness = 1.5
+        cOutline.Color = Color3.new(0, 0, 0)
+        cOutline.Transparency = 0.5
+        cOutline.Parent = c
+    end
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESPLabel"

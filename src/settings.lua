@@ -12,7 +12,7 @@ local Settings = {
     Players = { Enabled = false, Color = Color3.fromRGB(0, 255, 0) },
     Givers = { Enabled = false, Color = Color3.fromRGB(0, 255, 255), Names = {"Giver", "Stand", "Table", "Стол", "Выдача"} },
     Universal = { Enabled = false, Color = Color3.fromRGB(255, 255, 255) },
-    Visuals = { Style = "Highlight", FillOpacity = 0.5, OutlineOpacity = 0 }
+    Visuals = { Style = "Highlight", BoxStyle = "Corners", ShowOutline = true, FillOpacity = 0.5, OutlineOpacity = 0 }
 }
 
 return Settings

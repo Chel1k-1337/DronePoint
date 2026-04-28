@@ -174,7 +174,7 @@ function GUI.Init(settingsRef, utilsRef)
     local StyleBtn = Instance.new("TextButton")
     StyleBtn.Size = UDim2.new(0.95, 0, 0, 35)
     StyleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    StyleBtn.Text = "STYLE: " .. Settings.Visuals.Style:upper()
+    StyleBtn.Text = "RENDER: " .. Settings.Visuals.Style:upper()
     StyleBtn.TextColor3 = Color3.new(1, 1, 1)
     StyleBtn.Font = Enum.Font.GothamBold
     StyleBtn.TextSize = 11
@@ -182,8 +182,24 @@ function GUI.Init(settingsRef, utilsRef)
     Instance.new("UICorner", StyleBtn).CornerRadius = UDim.new(0, 6)
     StyleBtn.MouseButton1Click:Connect(function()
         Settings.Visuals.Style = (Settings.Visuals.Style == "Highlight" and "Box" or "Highlight")
-        StyleBtn.Text = "STYLE: " .. Settings.Visuals.Style:upper()
+        StyleBtn.Text = "RENDER: " .. Settings.Visuals.Style:upper()
     end)
+
+    local BoxStyleBtn = Instance.new("TextButton")
+    BoxStyleBtn.Size = UDim2.new(0.95, 0, 0, 35)
+    BoxStyleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    BoxStyleBtn.Text = "BOX STYLE: " .. Settings.Visuals.BoxStyle:upper()
+    BoxStyleBtn.TextColor3 = Color3.new(1, 1, 1)
+    BoxStyleBtn.Font = Enum.Font.GothamBold
+    BoxStyleBtn.TextSize = 11
+    BoxStyleBtn.Parent = Contents.Settings
+    Instance.new("UICorner", BoxStyleBtn).CornerRadius = UDim.new(0, 6)
+    BoxStyleBtn.MouseButton1Click:Connect(function()
+        Settings.Visuals.BoxStyle = (Settings.Visuals.BoxStyle == "Corners" and "Full" or "Corners")
+        BoxStyleBtn.Text = "BOX STYLE: " .. Settings.Visuals.BoxStyle:upper()
+    end)
+    
+    CreateToggle("Box Outline", Contents.Settings, function(v) Settings.Visuals.ShowOutline = v end, Settings.Visuals.ShowOutline)
     
     CreateToggle("Universal ESP", Contents.Settings, function(v) Settings.Universal.Enabled = v end, Settings.Universal.Enabled)
 
